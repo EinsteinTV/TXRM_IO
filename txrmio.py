@@ -27,7 +27,7 @@ from copy import deepcopy
 
 
 # Self Information
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 __future__ = """Planned is to increase the speed and decrease the needed RAM for each file.
 Also check for enough space before saving.
 Try to find a way to provide functionality to more platforms."""
@@ -234,10 +234,10 @@ class TXRM_IO:
         return istream.Read(istream.Stat()[2])
     
     def exists(self, stream):
-        if stream in self.__tree:
+        if stream in self.__stream_list:
             return True
         else:
-            for s in self.__tree:
+            for s in self.__stream_list:
                 if s.startswith(stream+"/"):
                     return True
             else:
@@ -350,7 +350,14 @@ class TXRM_IO:
             raise IOError("File can not be saved in read mode!")
         if not file_name.lower().endswith(".txrm"):
             file_name = f"{file_name}.txrm"
-        file_path = os.path.join(os.path.dirname(self.__source_file), file_name)
+        if not ("\\" in file_name or "/" in file_name):
+            file_path = os.path.join(os.path.dirname(self.__source_file), file_name)
+        else:
+            if not os.path.exists(os.path.dirname(file_name)):
+                print("File path not existing, fallback to dir:", os.path.dirname(self.__source_file))
+                file_path = os.path.join(os.path.dirname(self.__source_file), os.path.basename(file_name))
+            else:
+                file_path = file_name
         shutil.copy(self.__source_file, file_path)
         # Open File
         modus = STGM_READWRITE|STGM_SHARE_EXCLUSIVE
@@ -390,7 +397,8 @@ class TXRM_IO:
     
     @images.setter
     def images(self, value):
-        self.__images = value
+        image_dtype = float32 if self.__meta["image_data_type"] == 10 else uint16
+        self.__images = value.astype(image_dtype)
         self.__meta["number_of_images"] = self.__images.shape[0]
     
     @property
